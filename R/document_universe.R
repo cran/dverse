@@ -1,20 +1,22 @@
-reference_any <- function(doc) {
-  force(doc)
-  function(x, url_template = NULL, url = NULL, packages = NULL, strip_s3class = TRUE) {
-    warn_unnattached(x, doc)
-    pick <- pick_doc(packages = packages, doc = doc, x = x)
+document_universe_impl <- function(x, url_template = NULL) {
+  warn_unnattached(x)
+  pick <- pick_doc(x)
 
-    result <- tidy_reference(may_add_url(pick, url), strip_s3class)
+  out <- tidy_reference(pick, strip_s3class = TRUE)
 
-    if (!is.null(url_template)) {
-      result <- mutate(result, topic = paste0("<a href=", glue::glue(url_template), ">", .data$topic, "</a>"))
-    }
-
-    result
+  if (!is.null(url_template)) {
+    out <- mutate(
+      out,
+      topic = ifelse(
+        .data$type == "help",
+        paste0("<a href=", glue::glue(url_template), ">", .data$topic, "</a>"),
+        .data$topic
+      )
+    )
   }
-}
 
-document_universe_impl <- reference_any("package")
+  out
+}
 
 
 #' Create a data frame with documentation metadata of one or more packages
@@ -34,18 +36,18 @@ document_universe_impl <- reference_any("package")
 #'
 #' @export
 #' @examples
-#' document_universe("datasets")
+#' library(glue)
+#' library(tibble)
+#'
+#' url_template <- "https://{package}.tidyverse.org/reference/{topic}.html"
+#' document_universe(c("glue", "tibble"), url_template)
 document_universe <- function(x, url_template = NULL) {
   # TODO Refactor to simplify. Comes from the more complex maurolepore/pkgdoc
   out <- document_universe_impl(x = x, url_template = url_template)
   tibble::as_tibble(out)
 }
 
-warn_unnattached <- function(x, doc) {
-  if (!identical(doc, "package")) {
-    return(invisible(x))
-  }
-
+warn_unnattached <- function(x, doc = "package") {
   if (!all(attached(x))) {
     unattached <- x[!attached(x)]
     cli::cli_warn(c(
@@ -55,49 +57,35 @@ warn_unnattached <- function(x, doc) {
   }
 }
 
-pick_doc <- function(packages, doc, x) {
-  result <- search_documentation(packages = packages)
-  result <- exclude_package_doc(result, packages)
-  result <- exclude_internal_functions(result)
-  result <- select(result, -"libpath", -"id", -"encoding", -"name")
-  result <- unique(result)
-  result <- filter(result, result[[doc]] %in% x)
+pick_doc <- function(x) {
+  out <- search_documentation()
+  out <- select(out, -"libpath", -"id", -"encoding", -"name")
+  out <- unique(out)
+  out <- filter(out, out[["package"]] %in% x)
 
-  abort_missing_doc(result, doc, x)
-  result
+  abort_unavailable_package(out, x)
+  out
 }
 
 tidy_reference <- function(data, strip_s3class) {
   out <- collapse_alias(data, strip_s3class)
-  out <- select(out, c("topic", "alias", "title", "concept", "package"))
+  out <- select(out, c("topic", "alias", "title", "concept", "type", "keyword", "package"))
   out <- arrange(out, .data$alias)
   out
-}
-
-exclude_package_doc <- function(data, packages) {
-  if (is.null(packages)) {
-    return(data)
-  }
-
-  filter(data, !.data$alias %in% c(packages, glue("{package}-package")))
-}
-
-exclude_internal_functions <- function(data) {
-  filter(data, !.data$keyword %in% "internal")
 }
 
 attached <- function(x) {
   unlist(lapply(glue("package:{x}"), rlang::is_attached))
 }
 
-abort_missing_doc <- function(.data, doc, x) {
-  good_request <- x %in% unique(.data[[doc]])
-  if (all(good_request)) {
-    return(invisible(.data))
+abort_unavailable_package <- function(data, x) {
+  is_available <- x %in% unique(data[["package"]])
+  if (all(is_available)) {
+    return(invisible(data))
   }
 
-  bad_request <- x[!good_request]
-  cli::cli_abort("No {doc} matches '{bad_request}'.")
+  is_unavailable <- x[!is_available]
+  cli::cli_abort("No pacakge matches '{is_unavailable}'.")
 }
 
 collapse_alias <- function(data, strip_s3class = FALSE) {
@@ -115,21 +103,4 @@ collapse_alias <- function(data, strip_s3class = FALSE) {
 
 may_strip_s3class <- function(x, .f = s3_strip_class) {
   paste(unique(.f(x)), collapse = ", ")
-}
-
-may_add_url <- function(x, url) {
-  if (is.null(url)) {
-    return(unique(x))
-  }
-  unique(link_topic(x, url))
-}
-
-link_topic <- function(data, url) {
-  out <- mutate(
-    data,
-    topic   = glue("<a href={url}{package}/reference/{topic}>?</a>"),
-    package = glue("<a href={url}{package}>{package}</a>")
-  )
-
-  arrange(out, .data$package)
 }

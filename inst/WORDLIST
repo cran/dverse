@@ -1,10 +1,11 @@
-AirPassengers
-BJsales
 CMD
 Codecov
-charset
-funcitons
+Lifecycle
+ORCID
+Tidyverse
+dplyr
+ggplot
 pkgdown
+tibble
 tidymodels
 tidyverse
-yml

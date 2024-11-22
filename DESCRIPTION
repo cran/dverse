@@ -1,6 +1,6 @@
 Package: dverse
 Title: Document a Universe of Packages
-Version: 0.0.1
+Version: 0.1.0
 Authors@R: 
     person("Mauro", "Lepore", , "maurolepore@gmail.com", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "https://orcid.org/0000-0002-1986-7988"))
@@ -13,7 +13,7 @@ License: MIT + file LICENSE
 URL: https://github.com/maurolepore/dverse,
         https://maurolepore.github.io/dverse/
 BugReports: https://github.com/maurolepore/dverse/issues
-Depends: R (>= 4.3)
+Depends: R (>= 3.6)
 Imports: cli, dplyr, glue, rlang, tibble, utils
 Suggests: DT, knitr, testthat, withr
 Config/Needs/website: rmarkdown
@@ -22,8 +22,8 @@ Encoding: UTF-8
 Language: en-US
 RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2024-11-03 19:42:44 UTC; rstudio
+Packaged: 2024-11-22 11:45:55 UTC; rstudio
 Author: Mauro Lepore [aut, cre, cph] (<https://orcid.org/0000-0002-1986-7988>)
 Maintainer: Mauro Lepore <maurolepore@gmail.com>
 Repository: CRAN
-Date/Publication: 2024-11-05 10:30:06 UTC
+Date/Publication: 2024-11-22 12:00:02 UTC

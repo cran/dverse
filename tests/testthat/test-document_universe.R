@@ -10,14 +10,18 @@ test_that("yields the expected tbl", {
   out <- document_universe(c("datasets"))
 
   expect_s3_class(out, "tbl")
-  expect_named(out, c("topic", "alias", "title", "concept", "package"))
+
+  cols <- c("topic", "alias", "title", "concept", "type", "keyword", "package")
+  expect_named(out, cols)
+
   are_type <- unlist(unique(lapply(out, typeof)))
   expect_equal(are_type, "character")
 })
 
 test_that("works with multiple packages", {
-  out <- document_universe(c("datasets", "grDevices"))
-  expect_equal(unique(out$package), c("datasets", "grDevices"))
+  packages <- c("datasets", "grDevices")
+  out <- document_universe(packages)
+  expect_true(setequal(out$package, packages))
 })
 
 test_that("warns if a package isn't attached", {
@@ -31,8 +35,9 @@ test_that("with no url creates no link", {
 })
 
 test_that("with a url creates a link", {
-  out <- document_universe("datasets", url = "https://blah")$topic[[1]]
-  expect_true(grepl("href", out))
+  out <- document_universe("datasets", url = "https://blah")
+  topic <- out[out$type == "help", "topic"]$topic
+  expect_true(all(grepl("href", topic)))
 })
 
 test_that("srips the class of S3 methods", {
@@ -41,9 +46,14 @@ test_that("srips the class of S3 methods", {
   expect_false(grepl("numeric", alias))
 })
 
-test_that("doesn't include the package-level documentation", {
+test_that("includes the package-level documentation", {
   out <- document_universe("dverse")
-  expect_false(any(grepl("dverse-package", unique(out$alias))))
+  expect_true(any(grepl("dverse-package", unique(out$alias))))
+})
+
+test_that("includes exported but internal functions", {
+  out <- document_universe("dverse")
+  expect_true("internal" %in% out$keyword)
 })
 
 test_that("takes a `url_template`", {
@@ -55,4 +65,18 @@ test_that("takes a `url_template`", {
 test_that("with bad `url_template` errors gracefully", {
   bad <- "https://{bad}/{topic}.html"
   expect_error(document_universe("dverse", url_template = bad), "not found")
+})
+
+test_that("vignettes lack a link", {
+  # Not using dverse because on developer mode there are no vignettes
+  withr::local_package("tibble")
+  type <- "vignette"
+  out <- document_universe("tibble", url_template = "some/url")
+  topic <- out[out$type == type, ]$topic
+
+  # Error if there is no vignette
+  expect_false(rlang::is_empty(topic))
+
+  has_link <- any(grepl("href", topic))
+  expect_false(has_link)
 })
